@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <gsl/gsl_fit.h>
+#include <gsl/gsl_vector.h>
+#include <math.h>
+
+// Define your data points
+double x[] = {1.0, 2.0, 3.0, 4.0, 5.0};
+double y[] = {0.0, 0.693, 1.099, 1.386, 1.609};
+int n = 5;
+
+// Define the logarithmic function
+double logarithmic_function(const double x, const double *params) {
+    double a = params[0];
+    double b = params[1];
+    return a * log(x) + b;
+}
+
+int main() {
+    gsl_vector *x_data = gsl_vector_alloc(n);
+    gsl_vector *y_data = gsl_vector_alloc(n);
+
+    for (int i = 0; i < n; i++) {
+        gsl_vector_set(x_data, i, x[i]);
+        gsl_vector_set(y_data, i, y[i]);
+    }
+
+    gsl_multifit_function_fdf f;
+    f.f = &logarithmic_function;
+    f.df = NULL;
+    f.fdf = NULL;
+    f.n = n;
+    f.p = 2; // Number of parameters (a and b)
+    f.params = NULL;
+
+    double x_init[2] = {1.0, 1.0}; // Initial guess for parameters a and b
+    gsl_vector_view x_init_view = gsl_vector_view_array(x_init, 2);
+
+    const size_t max_iterations = 1000;
+    const double tolerance = 1e-6;
+
+    gsl_multifit_fdfsolver *solver = gsl_multifit_fdfsolver_alloc(gsl_multifit_fdfsolver_lmsder, n, 2);
+    gsl_multifit_fdfsolver_set(solver, &f, &x_init_view.vector);
+
+    int status, iter = 0;
+    do {
+        iter++;
+        status = gsl_multifit_fdfsolver_iterate(solver);
+
+        if (status)
+            break;
+
+        status = gsl_multifit_test_delta(solver->dx, solver->x, tolerance, tolerance);
+    } while (status == GSL_CONTINUE && iter < max_iterations);
+
+    if (status == GSL_SUCCESS) {
+        printf("Fit converges to parameters a = %.6f and b = %.6f\n", gsl_vector_get(solver->x, 0),
+               gsl_vector_get(solver->x, 1));
+    } else {
+        printf("Fit did not converge\n");
+    }
+
+    gsl_multifit_fdfsolver_free(solver);
+
+    gsl_vector_free(x_data);
+    gsl_vector_free(y_data);
+
+    return 0;
+}
