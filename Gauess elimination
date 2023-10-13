@@ -1,0 +1,93 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define MAX_DEGREE 5
+
+void polynomialFit(double x[], double y[], int dataPoints, int degree, double coefficients[]) {
+    double X[MAX_DEGREE * 2 + 1];
+    double Y[MAX_DEGREE + 1];
+
+    for (int i = 0; i < 2 * degree + 1; i++) {
+        X[i] = 0;
+        for (int j = 0; j < dataPoints; j++) {
+            X[i] += pow(x[j], i);
+        }
+    }
+
+    for (int i = 0; i <= degree; i++) {
+        Y[i] = 0;
+        for (int j = 0; j < dataPoints; j++) {
+            Y[i] += y[j] * pow(x[j], i);
+        }
+    }
+
+    double A[MAX_DEGREE + 1][MAX_DEGREE + 2];
+
+    for (int i = 0; i <= degree; i++) {
+        for (int j = 0; j <= degree; j++) {
+            A[i][j] = X[i + j];
+        }
+        A[i][degree + 1] = Y[i];
+    }
+
+    printf("Coefficient Matrix A:\n");
+    for (int i = 0; i <= degree; i++) {
+        for (int j = 0; j <= degree + 1; j++) {
+            printf("%.4f\t", A[i][j]);
+        }
+        printf("\n");
+    }
+
+    for (int i = 0; i <= degree; i++) {
+        for (int k = i + 1; k <= degree; k++) {
+            double factor = A[k][i] / A[i][i];
+            for (int j = i; j <= degree + 1; j++) {
+                A[k][j] -= factor * A[i][j];
+            }
+        }
+    }
+
+    coefficients[degree] = A[degree][degree + 1] / A[degree][degree];
+    for (int i = degree - 1; i >= 0; i--) {
+        coefficients[i] = A[i][degree + 1];
+        for (int j = i + 1; j <= degree; j++) {
+            coefficients[i] -= A[i][j] * coefficients[j];
+        }
+        coefficients[i] /= A[i][i];
+    }
+
+    printf("\nFitted Polynomial Coefficients:\n");
+    for (int i = 0; i <= degree; i++) {
+        printf("a%d = %.4f\n", i, coefficients[i]);
+    }
+}
+
+int main() {
+    FILE *file = fopen("data.txt", "r");
+    if (file == NULL) {
+        printf("Error: Unable to open the file.\n");
+        return 1;
+    }
+
+    int dataPoints = 0;
+    int degree = 2; // Adjust the degree of the polynomial as needed
+    double x[MAX_DEGREE + 1];
+    double y[MAX_DEGREE + 1];
+
+    while (fscanf(file, "%lf %lf", &x[dataPoints], &y[dataPoints]) != EOF) {
+        dataPoints++;
+    }
+
+    fclose(file);
+
+    if (dataPoints == 0) {
+        printf("No data points read from the file.\n");
+        return 1;
+    }
+
+    double coefficients[MAX_DEGREE + 1];
+    polynomialFit(x, y, dataPoints, degree, coefficients);
+
+    return 0;
+}
